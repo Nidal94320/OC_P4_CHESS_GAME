@@ -9,6 +9,7 @@ from models.tournaments import Tournament
 from controllers.src.home_controller import HomeController
 from controllers.src.players_controller import PlayersController
 from controllers.src.rapport_controller import RapportController
+from controllers.src.tournament_controller import TournamentController
 
 
 class Controller:
@@ -18,6 +19,7 @@ class Controller:
         self.home_controller = HomeController()
         self.players_controller = PlayersController()
         self.rapport_controller = RapportController()
+        self.tournament_controller = TournamentController()
 
     def run(self):
         # initalize data for demo
@@ -31,7 +33,8 @@ class Controller:
 
         if choice == "2":
             # tournament menu
-            pass
+            if self.tournament_controller.tournament_menu() == "exit":
+                self.run()
 
         if choice == "3":
             # rapport menu

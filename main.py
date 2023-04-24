@@ -9,6 +9,8 @@ from controllers.main_controller import Controller
 Player.reboot()
 
 """ create 2 fakes tournaments """
+# besoin d'aide sur la méthode next_round
+# de la class tournament
 
 reboot_tournament()
 

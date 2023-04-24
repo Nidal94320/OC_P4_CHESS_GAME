@@ -2,9 +2,9 @@
 
 
 class ViewRapport:
-    """Main menu view."""
+    """rapport view."""
 
-    def rapport_menu(self) -> str:
+    def rapport_menu(self):
         """display rapport menu"""
 
         print("-" * 80)
