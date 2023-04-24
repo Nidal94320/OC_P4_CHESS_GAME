@@ -1,1 +1,1 @@
-# OC_P4_CHESS_GAME
+# Instructions pour exécuter le programme et générer un nouveau rapport flake8
