@@ -87,6 +87,17 @@ class Player:
         return sorted(self.table().all(), key=cle)
 
     @classmethod
+    def players_ine(self):
+        """get players ine list"""
+
+        players_ine = []
+        players = self.read_all()
+        for p in players:
+            players_ine.append(p["ine"])
+
+        return players_ine
+
+    @classmethod
     def find_player(self, ine):
         """Look for a player in players table by ine
 

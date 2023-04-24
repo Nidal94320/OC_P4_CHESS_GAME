@@ -125,18 +125,58 @@ class Tournament:
         )
 
     def delete(self):
-        """delete a tournament from Tournaments table(json)"""
+        """delete a tournament and its rounds from tables(json)"""
 
+        rounds_list = self.rounds_list
+        for round_name in rounds_list:
+            round = Round.load(round_name)
+            round.delete()
         self.table().remove(where("name") == self.name)
 
-    def add_players_list(self, players_ine: list):
+    @classmethod
+    def tournaments_name(self) -> list:
+        """return tournaments name list"""
+
+        tournaments_name = []
+        for tournament in Tournament.table().all():
+            tournaments_name.append(tournament["name"])
+
+        return tournaments_name
+
+    def tournament_players(self) -> list:
+        """return tournament players list"""
+
+        players = []
+        for player in list(self.players_score.keys()):
+            p = Player.find_player(player)
+            players.append(
+                [
+                    p[0]["last_name"],
+                    p[0]["first_name"],
+                    p[0]["birthdate"],
+                    p[0]["ine"],
+                    self.name,
+                    self.status,
+                    self.current_round,
+                ]
+            )
+        players = sorted(players, key=lambda p: (p[0]))
+
+        return players
+
+    def add_players_list(self, players_ine: list) -> int:
         """add a player to tournament in instance and database"""
 
+        added_players = 0
         for ine in players_ine:
-            found_player = Player.find_player(ine)
-            self.players_score[found_player[0]["ine"]] = 0
+            if ine in Player.players_ine():
+                if ine not in list(self.players_score.keys()):
+                    self.players_score[ine] = 0
+                    added_players += 1
 
         self.update()
+
+        return added_players
 
     def first_round(self):
         """generate first round from shuffled players list"""
@@ -401,21 +441,7 @@ class Tournament:
     def players_name_rapport(self) -> list:
         """export a players list rapport sorted by last-name (.xlsx) and print a preview of it"""
 
-        players = []
-        for player in list(self.players_score.keys()):
-            p = Player.find_player(player)
-            players.append(
-                [
-                    p[0]["last_name"],
-                    p[0]["first_name"],
-                    p[0]["birthdate"],
-                    p[0]["ine"],
-                    self.name,
-                    self.status,
-                    self.current_round,
-                ]
-            )
-        players = sorted(players, key=lambda p: (p[0]))
+        players = self.tournament_players()
         data = [
             {
                 "last_name": s[0],
@@ -567,7 +593,7 @@ class Tournament:
 
 def boot_next_round():
     """next_rount"""
-    tournament = Tournament.load("tournoi_1")
+    tournament = Tournament.load("TOURNOI_1")
 
     tournament.next_round()
 
@@ -588,11 +614,11 @@ def reboot_tournament():
     Round.table().truncate()
     Tournament.table().truncate()
     ine_liste = ["AB12345", "AB12346", "AB12347", "AB12348", "AB12349", "AB12350"]
-    tournament1 = Tournament("tournoi_1", "online")
+    tournament1 = Tournament("TOURNOI_1", "online")
     tournament1.create()
     tournament1.add_players_list(ine_liste)
 
-    tournament2 = Tournament("tournoi_2", "web")
+    tournament2 = Tournament("TOURNOI_2", "web")
     tournament2.create()
 
     # first round

@@ -74,7 +74,7 @@ class ViewPlayers:
             print(f"\n{len(result)} player found in system :\n ")
 
         elif len(result) > 1:
-            print(f"\n{len(result)} joueurs trouvés dans le système :\n ")
+            print(f"\n{len(result)} players found in system :\n ")
 
         if len(result) > 0:
             print("Last-Name       - First-Name      - Birthdate       - ine\n")

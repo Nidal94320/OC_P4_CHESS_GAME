@@ -9,7 +9,7 @@ class ViewRapport:
 
         print("-" * 80)
         print(
-            f"""                          ♟️   Chess Game ♟️ 
+            """                          ♟️   Chess Game ♟️ 
 
                           Rapport Menu
             
