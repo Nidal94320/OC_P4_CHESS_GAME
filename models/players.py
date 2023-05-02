@@ -5,15 +5,6 @@ import pandas
 
 
 class Player:
-    """Create, edit Player in database(JSON) or read database
-
-
-    To instantiate a player :
-    - last_name(str)
-    - first_name(str)
-    - birthdate(str)
-    - ine (str)"""
-
     def __init__(self, last_name: str, first_name: str, birthdate: str, ine: str):
         self.last_name = last_name
         self.first_name = first_name

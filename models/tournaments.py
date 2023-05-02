@@ -1,7 +1,7 @@
 """ class tournament """
 
+import logging
 from random import shuffle
-from itertools import combinations
 
 from tinydb import TinyDB, where
 import pandas
@@ -10,19 +10,14 @@ from models.players import Player
 from models.rounds import Round, timestamp
 
 
-SCORE = [0, 0.5, 1]
-
-
 class Tournament:
-    """Class tournament"""
-
     def __init__(
         self,
         name: str,
         place: str,
         start_date=timestamp(),
         end_date="(not finished)",
-        status="ongoing",
+        status="created",
         description="",
         players_score={},
         number_of_rounds=4,
@@ -74,18 +69,15 @@ class Tournament:
         Take as argument a tournament_name(str)
 
         return found result list"""
+
         try:
             return self.table().search(where("name") == tournament_name)[0]
         except IndexError:
             return []
-        # if len(self.table().search(where("name") == tournament_name)[0]) == 10:
-        #     return self.table().search(where("name") == tournament_name)[0]
-        # else:
-        #     return []
 
     @classmethod
     def load(self, tournament_name: str):
-        """load instance from json"""
+        """load tournament instance from its name in json"""
 
         if len(self.find(tournament_name)) == 10:
             tournament = self.find(tournament_name)
@@ -106,8 +98,7 @@ class Tournament:
             return []
 
     def update(self):
-        """update tournament data in json
-        (only tournament.name can't be updated)"""
+        """update tournament data in json by its name"""
 
         self.table().update(
             {
@@ -125,7 +116,7 @@ class Tournament:
         )
 
     def delete(self):
-        """delete a tournament and its rounds from tables(json)"""
+        """delete a tournament and its rounds in json"""
 
         rounds_list = self.rounds_list
         for round_name in rounds_list:
@@ -144,7 +135,7 @@ class Tournament:
         return tournaments_name
 
     def tournament_players(self) -> list:
-        """return tournament players list"""
+        """return tournament players list with all its attributes"""
 
         players = []
         for player in list(self.players_score.keys()):
@@ -165,46 +156,74 @@ class Tournament:
         return players
 
     def add_players_list(self, players_ine: list) -> int:
-        """add a player to tournament in instance and database"""
+        """add a players list to a tournament instance and database
 
-        added_players = 0
-        for ine in players_ine:
-            if ine in Player.players_ine():
-                if ine not in list(self.players_score.keys()):
-                    self.players_score[ine] = 0
-                    added_players += 1
+        if player is in players table and not in tournaments table
 
-        self.update()
+        return the number of players added (used in view)"""
 
-        return added_players
+        if self.status == "created":
+            added_players = 0
+            players_score = {}
+            for ine in players_ine:
+                if ine in Player.players_ine():
+                    if ine not in list(self.players_score.keys()):
+                        players_score[ine] = 0
+                        added_players += 1
+
+            self.players_score = players_score
+
+            return added_players
+        else:
+            logging.error(
+                "It is impossible to add players in a running or finished tournament!"
+            )
 
     def first_round(self):
-        """generate first round from shuffled players list"""
+        """generate a random round from shuffled players list
 
-        players = list(self.players_score.keys())
-        shuffle(players)
-        number_of_match = len(players) // 2
-        round = Round(
-            self.name,
-            self.name + "_round_" + str(self.current_round + 1),
-            self.current_round + 1,
-        )
-        self.current_round += 1
-        self.rounds_list.append(round.name)
+        used for the first round or if current_round >= number of players -1
+        """
 
-        for i in range(number_of_match):
-            match = ([players[i], ""], [players[i + 1], ""])
-            round.match_list.append(match)
+        if (self.status == "created" and len(self.players_score) >= 4) or (
+            (self.current_round >= len(self.players_score) - 1)
+            and (self.rounds_status())
+            and (self.status == "running")
+        ):
+            round = Round(
+                self.name,
+                self.name + "_round_" + str(self.current_round + 1),
+                self.current_round + 1,
+            )
+            players_ine_list = list(self.players_score.keys())
+            round.first_round(players_ine_list)
 
-            """supprimer le premier élément de la liste >
-            i skip le nouveau premier élément au prochain tour >
-            comme ceci le premier couple de joueur de la liste n'apparait plus dans duel """
-            players.pop(0)
+            self.status = "running"
+            self.current_round += 1
+            rounds_list = self.rounds_list
+            rounds_list.append(round.name)
+            self.rounds_list = rounds_list
 
-        round.create()
-        self.update()
+            round.create()
+            self.update()
 
-    def update_match_score(
+        elif len(self.players_score) < 4:
+            logging.error(
+                "A minimum of 4 players is required to start the tournament !"
+            )
+
+        elif not self.rounds_status():
+            logging.error("The previous round isn't finished !")
+
+        elif self.status != "created" and (
+            self.current_round < len(self.players_score) - 1
+        ):
+            logging.error("Please use the 'next_round' class method !")
+
+        elif self.status == "finished":
+            logging.error("The tournament is finished !")
+
+    def update_match_result(
         self,
         index_of_match: int,
         player1_score: float,
@@ -213,183 +232,167 @@ class Tournament:
     ):
         """update match score of one round (update the last round if no present value)"""
 
-        name_round = self.rounds_list[index_of_round]
-        round = Round.load(name_round)
-        # print(round.match_list)
-        round.match_list[index_of_match][0][1] = player1_score
-        round.match_list[index_of_match][1][1] = player2_score
-        # print(round.match_list)
-        round.update()
-        self.round_status(index_of_round)
+        try:
+            round = Round.load(self.rounds_list[index_of_round])
+        except IndexError:
+            logging.error("There is no round at this index in the tournament !")
 
-    def round_status(self, index_of_round=-1) -> bool:
-        """check round status and update (update the last round if no present value)
+        try:
+            round.update_match_result(index_of_match, player1_score, player2_score)
+            round._status()
+            round.update()
+            self._status()
+        except UnboundLocalError:
+            logging.error("There is no round at this index in the tournament !")
 
-        return a boolean: True for a finished round, False for an ongoing round"""
-
-        name_round = self.rounds_list[index_of_round]
-        round = Round.load(name_round)
-
-        finished = True
-        for match in round.match_list:
-            if (match[0][1] not in SCORE) or (match[1][1] not in SCORE):
-                finished = False
-        if finished:
-            round.end_date = timestamp()
-            round.status = "finished"
-        else:
-            round.end_date = ""
-            round.status = "ongoing"
-
-        round.update()
-
-        return finished
-
-    def all_round_status(self) -> bool:
+    def rounds_status(self) -> bool:
         """check if all created rounds of the tournament are finished
 
         return a boolean: True if all round are finished, False for the reverse"""
 
-        finished = True
-        rounds_list = self.rounds_list
-        for r in rounds_list:
-            round = Round.load(r)
-            if round.status != "finished":
-                finished = False
-
-        return finished
+        return Round.rounds_status(self.rounds_list)
 
     def update_players_score(self):
-        """update players score and update database"""
+        """update players_score and update database if all created rounds are finished"""
 
-        if self.all_round_status():
-            players_score = []
-            for p in list(self.players_score.keys()):
-                players_score.append([p, 0])
-            rounds_list = self.rounds_list
-
-            for round_id in rounds_list:
-                round = Round.load(round_id)
-                for match in round.match_list:
-                    for player in players_score:
-                        if match[0][0] == player[0]:
-                            player[1] += match[0][1]
-                        if match[1][0] == player[0]:
-                            player[1] += match[1][1]
-
-            for ine in players_score:
-                self.players_score[ine[0]] = ine[1]
+        if self.rounds_status():
+            players_ine_list = list(self.players_score.keys())
+            self.players_score = Round.update_players_score(
+                players_ine_list, self.rounds_list
+            )
 
             self.update()
-
-    def delete_last_round(self):
-        """delete the last round"""
-
-        self.current_round -= 1
-        last_round_name = self.rounds_list[-1]
-        self.rounds_list.pop(-1)
-        last_round = Round.load(last_round_name)
-        last_round.delete()
-        self.update()
-        self.update_players_score()
-
-    def played_matchs(self) -> list:
-        """generate a list of played matchs"""
-
-        played_matchs = []
-        rounds_list = self.rounds_list
-        players = self.players_rank()
-        for player in players:
-            played_matchs.append((player, player))
-
-        for round_id in rounds_list:
-            round = Round.load(round_id)
-            for match in round.match_list:
-                played_matchs.append((match[0][0], match[1][0]))
-                played_matchs.append((match[1][0], match[0][0]))
-
-        return played_matchs
+        else:
+            logging.error(
+                "All created rounds must be finished to update the players score !"
+            )
 
     def players_rank(self) -> list:
-        """generate players list sorted by rank"""
+        """generate players ine list sorted by rank"""
 
-        players = []
+        players_ine = []
         for p in sorted(list(self.players_score.items()), key=lambda p: (-p[1])):
-            players.append(p[0])
+            players_ine.append(p[0])
 
-        return players
+        return players_ine
 
     def next_round(self):
-        """generate a next round based on players rank played matchs"""
+        """generate a next round from players list sorted by rank
+        only if tournament status is 'running' and current_round < number of players -1
+        """
 
-        played_matchs = self.played_matchs()
+        if (self.status == "running") and (
+            (self.current_round < len(self.players_score) - 1)
+            and (self.rounds_status())
+        ):
+            round = Round(
+                self.name,
+                self.name + "_round_" + str(self.current_round + 1),
+                self.current_round + 1,
+            )
+            played_matchs = Round.played_matchs(self.rounds_list)
+            round.next_round(self.players_rank(), played_matchs)
+            self.current_round += 1
+            rounds_list = self.rounds_list
+            rounds_list.append(round.name)
+            self.rounds_list = rounds_list
+
+            round.create()
+            self.update()
+
+        elif not self.rounds_status():
+            logging.error("The previous round isn't finished !")
+
+        elif self.status == "finished":
+            logging.error("The tournament is finished !")
+
+        elif (self.status == "created") or (
+            self.current_round >= len(self.players_score) - 1
+        ):
+            logging.error("Please use the 'first_round' class method !")
+
+    def _status(self) -> bool:
+        """Verify the current status of the tournament and update it if it has concluded
+
+        return True if the tournament is finished"""
+
+        if self.rounds_status() and self.current_round == self.number_of_rounds:
+            self.status = "finished"
+            self.end_date = timestamp()
+            self.update()
+            return True
+        else:
+            return False
+
+    def draw_round(self):
+        """call 'first_round' class method if tournament is 'created' or current_round >= number of players -1
+
+        call 'next_round' class method if tournament is 'running' and current_round < number of players -1
+        """
+
+        if self.status != "finished":
+            if self.status == "created" and len(self.players_score) >= 4:
+                self.first_round()
+                logging.info("'first_round' class method is used")
+
+            if (self.current_round >= len(self.players_score) - 1) and (
+                self.rounds_status()
+            ):
+                self.first_round()
+                logging.info("'first_round' class method is used")
+
+            if (self.status == "running") and (
+                (self.current_round < len(self.players_score) - 1)
+                and (self.rounds_status())
+            ):
+                self.next_round()
+                logging.info("'next_round' class method is used")
+
+        else:
+            logging.error("The tournament is finished !")
+
+    def full_player_ranking(self):
+        """return the list of player ranking with its full attributes"""
+
+        players_rank_rapport = []
         players = self.players_rank()
-        match_list = []
-        participants = []
 
         i = 1
-        for player1 in players[:-1]:
-            for player2 in players:
-                match = (player1, player2)
-                # on vérifie que le match ne soit pas déjà joué dans les rounds précédents (played_matchs)
-                if match not in played_matchs:
-                    # on vérifie que les joueurs du match ne sont pas déjà présent dans match_list
-                    if player1 not in participants:
-                        if player2 not in participants:
-                            match_list.append(([player1, ""], [player2, ""]))
-                            participants.append(player1)
-                            participants.append(player2)
-            i = i + 1
+        for player in players:
+            p = Player.find_player(player)
+            s = [
+                str(i),
+                self.players_score[player],
+                p[0]["last_name"],
+                p[0]["first_name"],
+                p[0]["ine"],
+                self.name,
+                self.status,
+                self.current_round,
+            ]
+            players_rank_rapport.append(s)
+            i += 1
 
-        round = Round(
-            self.name,
-            self.name + "_round_" + str(self.current_round + 1),
-            self.current_round + 1,
-        )
-        round.match_list = match_list
-        self.current_round += 1
-        self.rounds_list.append(round.name)
+        return players_rank_rapport
 
-        round.create()
-        self.update()
+    def get_matchs_list(self) -> list:
+        """return the matchs_list of the current round if there are still onging matchs"""
 
-    def next_round_2(self):
-        """generate a next round based on players rank played matchs"""
+        last_round_name = self.rounds_list[-1]
+        round = Round.load(last_round_name)
+        if not round._status():
+            matchs_list = round.get_matchs_list()
+            return matchs_list
+        else:
+            return []
 
-        played_matchs = self.played_matchs()
-        players = self.players_rank()
-        match_list = []
-        participants = []
-        all_matchs = []
-        for p in combinations(players, 2):
-            all_matchs.append(p)
+    """ rapport class methode """
 
-        for match in all_matchs:
-            if match not in played_matchs:
-                if match[0] not in participants:
-                    if match[1] not in participants:
-                        match_list.append(([match[0], ""], [match[1], ""]))
-                        participants.append(match[0])
-                        participants.append(match[1])
-
-        round = Round(
-            self.name,
-            self.name + "_round_" + str(self.current_round + 1),
-            self.current_round + 1,
-        )
-        round.match_list = match_list
-        self.current_round += 1
-        self.rounds_list.append(round.name)
-
-        round.create()
-        self.update()
-
-    """ rapport methode """
-
+    # reporter le print dans la vue
     def players_rank_rapport(self):
-        """export a players rank rapport (.xlsx) and print a preview of it"""
+        """Export the tournament players ranking as a report (.xlsx) and return a list of it."""
 
-        players_rank = []
+        players_rank_rapport = []
         players = self.players_rank()
 
         i = 1
@@ -405,33 +408,36 @@ class Tournament:
                 self.status,
                 self.current_round,
             ]
-            players_rank.append(s)
+            players_rank_rapport.append(s)
             i += 1
 
         data = [
             {
-                "rank": r[0],
-                "score": r[1],
-                "last_name": r[2],
-                "first_name": r[3],
-                "ine": r[4],
+                "rank": row[0],
+                "score": row[1],
+                "last_name": row[2],
+                "first_name": row[3],
+                "ine": row[4],
                 "tournament": self.name,
                 "status": self.status,
                 "round": self.current_round,
             }
-            for r in players_rank
+            for row in players_rank_rapport
         ]
         data_to_export = pandas.DataFrame.from_records(data)
         file_path = (
             "./data/exports/tournament_(" + self.name + ")_players_rank_rapport.xlsx"
         )
         data_to_export.to_excel(file_path)
+
+        # les prints doivent être reporté dans la vue du tournoi !
+
         print()
         print(" Rank       | Score      | Last-Name       | First-Name      | Ine")
         print(
             "____________|____________|_________________|_________________|____________"
         )
-        for y in players_rank:
+        for y in players_rank_rapport:
             print(
                 f" {str(y[0]).ljust(10,' ')} | {str(y[1]).ljust(10,' ')} | {y[2].ljust(15,' ')} | {y[3].ljust(15,' ')} | {y[4].ljust(15,' ')}"
             )
@@ -439,7 +445,8 @@ class Tournament:
         print("*Full players rank rapport exported to data/exports/\n")
 
     def players_name_rapport(self) -> list:
-        """export a players list rapport sorted by last-name (.xlsx) and print a preview of it"""
+        """Export the tournament players list sorted by last-name as a report (.xlsx)
+        and return a list of it."""
 
         players = self.tournament_players()
         data = [
@@ -465,7 +472,7 @@ class Tournament:
 
     @classmethod
     def tournaments_rapport(self) -> list:
-        """export tournaments data to an excel rapport and print a preview of it"""
+        """export tournaments data as a rapport (.xlsx) and return a list of it."""
 
         tournaments_data = []
         for t in self.table().all():
@@ -504,7 +511,7 @@ class Tournament:
         return tournaments_data
 
     def tournament_rapport(self) -> list:
-        """export tournament data to an excel rapport and print a preview of it"""
+        """export the tournament data as a rapport (.xlsx) and return a list of it."""
 
         data = [
             {
@@ -533,7 +540,7 @@ class Tournament:
         ]
 
     def rounds_rapport(self) -> list:
-        """export rounds data of tournament to an excel rapport and print a preview of it"""
+        """ "Export the tournament's rounds data as a report (.xlsx) and return a list of it."""
 
         rounds_list = self.rounds_list
         rounds_rapport = []
@@ -587,58 +594,20 @@ class Tournament:
 
         return rounds_rapport
 
+    """ class methode for demo """
 
-""" reboot functions """
+    @classmethod
+    def reboot(self):
+        """create a 2 fakes tournaments"""
 
+        Round.table().truncate()
+        self.table().truncate()
 
-def boot_next_round():
-    """next_rount"""
-    tournament = Tournament.load("TOURNOI_1")
+        tournament1 = Tournament("TOURNOI_1", "ONLINE")
+        ine_liste = ["AB12345", "AB12346", "AB12347", "AB12348"]
+        self.add_players_list(tournament1, ine_liste)
+        self.create(tournament1)
 
-    tournament.next_round()
+        tournament2 = Tournament("TOURNOI_2", "WEB")
+        self.create(tournament2)
 
-    tournament.update_match_score(0, 1, 0)
-    tournament.update_match_score(1, 0.5, 0.5)
-    tournament.update_match_score(2, 0, 1)
-
-    tournament.update_players_score()
-
-
-def reboot_tournament():
-    """create a 2 fakes tournaments
-
-    tournament_1 > complete
-    tournament_2 > without player and without round
-    """
-
-    Round.table().truncate()
-    Tournament.table().truncate()
-    ine_liste = ["AB12345", "AB12346", "AB12347", "AB12348", "AB12349", "AB12350"]
-    tournament1 = Tournament("TOURNOI_1", "online")
-    tournament1.create()
-    tournament1.add_players_list(ine_liste)
-
-    tournament2 = Tournament("TOURNOI_2", "web")
-    tournament2.create()
-
-    # first round
-
-    tournament1.first_round()
-
-    tournament1.update_match_score(0, 1, 0)
-    tournament1.update_match_score(1, 0.5, 0.5)
-    tournament1.update_match_score(2, 0, 1)
-
-    tournament1.update_players_score()
-
-    # round 2 :
-
-    boot_next_round()
-
-    # round 3 :
-
-    boot_next_round()
-
-    # round 4 :
-
-    boot_next_round()

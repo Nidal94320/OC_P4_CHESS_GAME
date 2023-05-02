@@ -16,8 +16,8 @@ class ViewPlayers:
             {preview}
                           
             1 -- List
-            2 -- Create
-            3 -- Find
+            2 -- Select
+            3 -- Create
             4 -- Edit
             5 -- Delete
             6 -- Back to Home Menu
@@ -34,7 +34,7 @@ class ViewPlayers:
     def add_player(self) -> list:
         """create a new player in database"""
 
-        print("Enter player's values now")
+        print("\nEnter player's values now")
         print("ine* is unique to each players")
         print()
         response1 = input("Player's last-name > ")
@@ -50,10 +50,10 @@ class ViewPlayers:
 
         print()
         if response:
-            print("player registered successfully !")
+            print("🟢 player registered successfully !")
         else:
-            print("ine* is already in system or in incorrect format !")
-            print("Please retry with another valid ine*")
+            print("🛑🚫 This ine* is already in system or in incorrect format !")
+            print("Please retry with a different valid ine*")
         print()
 
     def find_player(self) -> str:
@@ -68,13 +68,10 @@ class ViewPlayers:
 
         print()
         if (len(result)) == 0:
-            print(f"\n{len(result)} player found in system.\n ")
+            print(f"\n🛑🚫 {len(result)} player found in system.\n ")
 
         elif (len(result)) == 1:
-            print(f"\n{len(result)} player found in system :\n ")
-
-        elif len(result) > 1:
-            print(f"\n{len(result)} players found in system :\n ")
+            print(f"\n🟢 {len(result)} player selected in system :\n ")
 
         if len(result) > 0:
             print("Last-Name       - First-Name      - Birthdate       - ine\n")
@@ -106,9 +103,11 @@ class ViewPlayers:
 
         print()
         if response:
-            print("player edited successfully !")
+            print("🟢 player edited successfully !")
         else:
-            print("ine* not found in system ! Please retry with registered ine*")
+            print(
+                "🛑🚫 This ine* is not in the system ! Please retry with a registered ine*"
+            )
         print()
 
     def delete(self) -> str:
@@ -126,18 +125,20 @@ class ViewPlayers:
 
         print()
         if response:
-            print("player deleted successfully !")
+            print("🟢 player deleted successfully !")
         else:
-            print("ine* not found in system ! Please retry with registered ine*")
+            print(
+                "🛑🚫 🛑🚫 This ine* is not in the system ! Please retry with a registered ine*"
+            )
         print()
 
     def list_players(self, result: list) -> None:
         """print players list sorted by name"""
 
         if len(result) > 1:
-            print(f"\n{len(result)} joueurs enregistrés dans le système :\n ")
+            print(f"\n{len(result)} players registered in the system :\n ")
         else:
-            print(f"\n{len(result)} joueur enregistré dans le système :\n ")
+            print(f"\n{len(result)} player registered in the system :\n ")
         print("\nLast-Name       - First-Name      - Birthdate       - ine \n")
         for p in result:
             print(
@@ -147,4 +148,4 @@ class ViewPlayers:
     def invalid_choice(self):
         """used when invalid choice is selected"""
 
-        print(f"\nInvalide choice !\n ")
+        print(f"\n🛑🚫 Invalide choice !\n ")

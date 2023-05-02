@@ -135,12 +135,6 @@ dmypy.json
 *.xlsx
 *.json
 
-# flake8_rapport
-*.html
-*.css
-*.svg
-
-
 # .idea
 .idea/
 

@@ -1,5 +1,6 @@
 """Players Menu controller"""
 
+import re
 
 from models.players import Player
 from views.view_players import ViewPlayers
@@ -18,21 +19,74 @@ class PlayersController:
         choice = self.view_players.player_menu(preview)
 
         if choice == "1":
-            # 1. diplay players list
+            """1. diplay players list"""
+
             self.view_players.list_players(Player.read_all())
             # sleep(5)
             # return to Players menu
             self.players_menu()
 
         elif choice == "2":
-            # 2. add a new player menu
-            choice_2 = self.view_players.add_player()
-            if (len(choice_2[3]) == 7) and (len(Player.find_player(choice_2[3])) == 0):
+            """2. select a player by its ine"""
+
+            choice_2 = self.view_players.find_player().upper().strip()
+            self.view_players.response_find(Player.find_player(choice_2))
+            # sleep(5)
+            # return to Players menu
+            self.players_menu()
+
+        elif choice == "3":
+            """3. create a new player"""
+
+            choice_3 = self.view_players.add_player()
+            if (len(choice_3[3]) == 7) and (
+                len(
+                    Player.find_player(
+                        re.sub(r"[^\w\s-]+", "", choice_3[3])
+                        .lower()
+                        .replace("é", "e")
+                        .replace("è", "e")
+                        .replace("à", "a")
+                        .replace("ç", "c")
+                        .upper()
+                        .strip()
+                    )
+                )
+                == 0
+            ):
                 Player(
-                    choice_2[0].upper().strip(),
-                    choice_2[1].capitalize().strip(),
-                    choice_2[2].upper().strip(),
-                    choice_2[3].upper().strip(),
+                    re.sub(r"[^\w\s-]+", "", choice_3[0])
+                    .lower()
+                    .replace("é", "e")
+                    .replace("è", "e")
+                    .replace("à", "a")
+                    .replace("ç", "c")
+                    .upper()
+                    .strip(),
+                    re.sub(r"[^\w\s-]+", "", choice_3[1])
+                    .lower()
+                    .replace("é", "e")
+                    .replace("è", "e")
+                    .replace("à", "a")
+                    .replace("ç", "c")
+                    .capitalize()
+                    .strip(),
+                    choice_3[2]
+                    .lower()
+                    .replace("é", "e")
+                    .replace("è", "e")
+                    .replace("à", "a")
+                    .replace("ç", "c")
+                    .upper()
+                    .strip(),
+                    re.sub(r"[^\w\s-]+", "", choice_3[3])
+                    .lower()
+                    .replace("é", "e")
+                    .replace("è", "e")
+                    .replace("à", "a")
+                    .replace("ç", "c")
+                    .upper()
+                    .strip(),
                 ).create()
 
                 response = True
@@ -44,16 +98,9 @@ class PlayersController:
             # return to Players menu
             self.players_menu()
 
-        elif choice == "3":
-            # 3. find a player by its ine
-            choice_3 = self.view_players.find_player().upper().strip()
-            self.view_players.response_find(Player.find_player(choice_3))
-            # sleep(5)
-            # return to Players menu
-            self.players_menu()
-
         elif choice == "4":
-            # 4. edit player by ine
+            """4. edit player by ine"""
+
             choice_4 = self.view_players.edit_player()
             if len(Player.find_player(choice_4[3])) == 1:
                 p = Player.load(choice_4[3])
@@ -69,7 +116,8 @@ class PlayersController:
             self.players_menu()
 
         elif choice == "5":
-            # 5. delete player
+            """5. delete player"""
+
             choice_5 = self.view_players.delete().upper()
             if len(Player.find_player(choice_5)) == 1:
                 Player.load(choice_5).delete()
@@ -81,10 +129,12 @@ class PlayersController:
             self.players_menu()
 
         elif choice == "6":
-            # 6. Return to Home menu
+            """6. Return to Home menu"""
+
             return "exit"
 
         else:
-            # return to Players menu if invalid choice
+            """return to Players menu if invalid choice"""
+
             self.view_players.invalid_choice()
             self.players_menu()
