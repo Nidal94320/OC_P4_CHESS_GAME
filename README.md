@@ -1,9 +1,9 @@
 <center>
-CHESS GAME
+Chess tournament manager
 </center> 
 
 <p align="center">
-  <img src="./chess_game.png" alt="chess_game">
+  <img src="./icon.png" alt="icon">
 </p>
 
 

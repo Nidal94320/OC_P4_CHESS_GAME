@@ -73,15 +73,7 @@ class Rounds:
         if len(self.find(round_name)) == 7:
             round = self.find(round_name)
 
-            return Rounds(
-                round["tournament_name"],
-                round["name"],
-                round["number"],
-                round["start_date"],
-                round["end_date"],
-                round["status"],
-                round["match_list"],
-            )
+            return Rounds(**round)
         else:
             return []
 

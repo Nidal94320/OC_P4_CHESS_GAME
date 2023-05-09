@@ -47,12 +47,7 @@ class Players:
         if len(self.find(ine)) > 0:
             player = self.find(ine)[0]
 
-            return Players(
-                player["last_name"],
-                player["first_name"],
-                player["birthdate"],
-                player["ine"],
-            )
+            return Players(**player)
         else:
             return []
 

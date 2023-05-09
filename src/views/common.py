@@ -8,7 +8,7 @@ def top_bottom(function):
     def wrapper(*args, **kwargs):
         print()
         print("-" * 80)
-        print("\n                          ♟️   Chess Game  ♟️\n")
+        print("\n                          ♟️   Chess Tournament Manager  ♟️\n")
 
         result = function(*args, **kwargs)
 

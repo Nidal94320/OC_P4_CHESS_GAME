@@ -76,18 +76,7 @@ class Tournaments:
         if len(self.find(tournament_name)) > 0:
             tournament = self.find(tournament_name)[0]
 
-            return Tournaments(
-                tournament["name"],
-                tournament["place"],
-                tournament["start_date"],
-                tournament["end_date"],
-                tournament["status"],
-                tournament["description"],
-                tournament["players_score"],
-                tournament["number_of_rounds"],
-                tournament["current_round"],
-                tournament["rounds_list"],
-            )
+            return Tournaments(**tournament)
         else:
             return []
 
