@@ -1,22 +1,18 @@
-""" class Round """
+""" class Rounds """
 
-from datetime import datetime
+
 from random import shuffle
 import logging
 
 from tinydb import TinyDB, where
 
-
-SCORE = [0, 0.0, 0.5, 1, 1.0]
-
-
-def timestamp():
-    timestamp = str(datetime.now())[0:10]
-
-    return timestamp
+from .common import round_non_existence, timestamp
 
 
-class Round:
+SCORE = [0.0, 0.5, 1.0]
+
+
+class Rounds:
     def __init__(
         self,
         tournament_name: str,
@@ -77,7 +73,7 @@ class Round:
         if len(self.find(round_name)) == 7:
             round = self.find(round_name)
 
-            return Round(
+            return Rounds(
                 round["tournament_name"],
                 round["name"],
                 round["number"],
@@ -93,14 +89,7 @@ class Round:
         """update the round's data in json by its name"""
 
         self.table().update(
-            {
-                "tournament_name": self.tournament_name,
-                "number": self.number,
-                "start_date": self.start_date,
-                "end_date": self.end_date,
-                "status": self.status,
-                "match_list": self.match_list,
-            },
+            self.__dict__,
             where("name") == self.name,
         )
 
@@ -111,10 +100,7 @@ class Round:
 
     def first_round(self, players_ine_list: list):
         """generate a random round of matchs from a shuffled players list
-        and update the round instance
-
-        used for the first round or if current_round >= number of players -1
-        """
+        and update the round instance"""
 
         players_ine = players_ine_list
         shuffle(players_ine)
@@ -131,55 +117,66 @@ class Round:
 
     @classmethod
     def played_matchs(self, tournament_rounds_list: list) -> list:
-        """generate a list of previously played matches in the tournament."""
+        """generate a list of played matchs in the tournament."""
 
         played_matchs = []
 
         for round_id in tournament_rounds_list:
-            round = Round.load(round_id)
+            round = Rounds.load(round_id)
             for match in round.match_list:
                 played_matchs.append((match[0][0], match[1][0]))
                 played_matchs.append((match[1][0], match[0][0]))
 
         return played_matchs
 
-    def next_round(self, players_rank_list: list, played_matchs: list):
-        """generate a next round of matchs from players list sorted by rank
-        and update the round instance
+    @classmethod
+    def unchoised_player(self, last_round_name: str, players_list: list):
+        """Return the player who did not play in the previous round.
+        (only if the list of players is odd.)"""
 
-        if tournament status is 'running' and current_round < number of players -1"""
+        try:
+            round = Rounds.load(last_round_name)
+            participants = []
+            for match in round.match_list:
+                participants.extend([match[0][0], match[1][0]])
+
+            return [p for p in players_list if p not in participants][0]
+
+        except IndexError:
+            logging.info("the list of players is not odd !")
+
+    def next_round(
+        self, players_rank_list: list, played_matchs: list, unchoised_player=""
+    ):
+        """generate a next round of matchs from players list sorted by rank
+        and update the round instance"""
+
+        players = players_rank_list
+        if len(players) % 2 != 0:
+            if players[-1] != unchoised_player:
+                players.pop(-1)
+            else:
+                players.pop(-2)
 
         match_list = []
-        choised_players = []
+        participants = []
 
-        players_ine = players_rank_list
+        for p1 in players:
+            for p2 in players:
+                if (
+                    ((p1, p2) not in played_matchs)
+                    and (p1 not in participants)
+                    and (p2 not in participants)
+                    and (p1 != p2)
+                ):
+                    match_list.append(([p1, ""], [p2, ""]))
+                    participants.extend([p1, p2])
 
-        unchoised_players = [i for i in players_ine]
+        if len(match_list) == len(players_rank_list) // 2:
+            self.match_list = match_list
 
-        while len(unchoised_players) != 0:
-            p1 = unchoised_players[0]
-
-            if p1 in choised_players:
-                continue
-
-            for px in players_ine:
-                if px == p1:
-                    continue
-
-                if px in choised_players:
-                    continue
-
-                if (p1, px) not in played_matchs:
-                    break
-
-            match = ([p1, ""], [px, ""])
-            match_list.append(match)
-
-            choised_players.extend([p1, px])
-            unchoised_players.remove(p1)
-            unchoised_players.remove(px)
-
-        self.match_list = match_list
+        else:
+            self.first_round(players_rank_list)
 
     def update_match_result(
         self,
@@ -187,19 +184,19 @@ class Round:
         player1_score: float,
         player2_score: float,
     ):
-        """update the match's result"""
+        """update the match result"""
 
         try:
             self.match_list[index_of_match][0][1] = player1_score
             self.match_list[index_of_match][1][1] = player2_score
 
         except UnboundLocalError:
-            logging.error("There is no match at this index in the round !")
+            round_non_existence()
 
         except IndexError:
-            logging.error("There is no match at this index in the round !")
+            round_non_existence()
 
-    def _status(self) -> bool:
+    def state(self) -> bool:
         """check the round's status and update it if it's finished
 
         return a boolean: True for a finished round, False for an ongoing round"""
@@ -222,7 +219,7 @@ class Round:
 
         finished = True
         for r in rounds_list:
-            round = Round.load(r)
+            round = Rounds.load(r)
             if round.status != "finished":
                 finished = False
 
@@ -238,7 +235,7 @@ class Round:
             players_score[ine] = 0
 
         for round_id in rounds_list:
-            round = Round.load(round_id)
+            round = Rounds.load(round_id)
             for match in round.match_list:
                 for ine in players_ine_list:
                     if match[0][0] == ine:

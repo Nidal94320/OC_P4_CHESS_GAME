@@ -1,23 +1,30 @@
-""" main : run chess game """
+""" main : run the chess game """
 
-from models.players import Player
-from models.tournaments import Tournament
-from controllers.main_controller import Controller
+from os import path
 
-""" add 6 fake players for the demo """
+from src.models.common import folders_check
+from src.models.player import Players
+from src.models.tournament import Tournaments
+from src.controllers.main import MainController
 
-Player.reboot()
+
+""" create 6 fake players for the demo """
+
+Players.reboot()
+
 
 """ create 2 fakes tournaments for the demo"""
 
-Tournament.reboot()
+Tournaments.reboot()
 
 
 def main():
-    while True:
-        controller = Controller()
-        controller.run()
+    if path.exists("./src/"):
+        MainController().run()
+    else:
+        print("The 'src' folder is missing !")
 
 
 if __name__ == "__main__":
+    folders_check()
     main()

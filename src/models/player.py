@@ -1,10 +1,12 @@
-""" class Player """
+""" class Players """
 
 from tinydb import TinyDB, where
-import pandas
+import pandas as pd
+
+from .common import remove_file
 
 
-class Player:
+class Players:
     def __init__(self, last_name: str, first_name: str, birthdate: str, ine: str):
         self.last_name = last_name
         self.first_name = first_name
@@ -17,6 +19,8 @@ class Player:
         return f"{self.__dict__}"
 
     def __repr__(self):
+        """used in print"""
+
         return str(self)
 
     @classmethod
@@ -37,29 +41,26 @@ class Player:
         self.table().insert(self.__dict__)
 
     @classmethod
-    def load(self, ine):
+    def load(self, ine: str):
         """load instance from json"""
 
-        if len(self.find_player(ine)) > 0:
-            player = self.find_player(ine)
+        if len(self.find(ine)) > 0:
+            player = self.find(ine)[0]
 
-            return Player(
-                player[0]["last_name"],
-                player[0]["first_name"],
-                player[0]["birthdate"],
-                player[0]["ine"],
+            return Players(
+                player["last_name"],
+                player["first_name"],
+                player["birthdate"],
+                player["ine"],
             )
         else:
             return []
 
     def update(self):
         """update players data in json"""
+
         self.table().update(
-            {
-                "last_name": self.last_name,
-                "first_name": self.first_name,
-                "birthdate": self.birthdate,
-            },
+            self.__dict__,
             where("ine") == self.ine,
         )
 
@@ -69,7 +70,7 @@ class Player:
         self.table().remove(where("ine") == self.ine)
 
     @classmethod
-    def read_all(self):
+    def read(self) -> list:
         """Display players table sorted by last_name"""
 
         def cle(players):
@@ -78,37 +79,24 @@ class Player:
         return sorted(self.table().all(), key=cle)
 
     @classmethod
-    def players_ine(self):
+    def ine_list(self) -> list:
         """get players ine list"""
 
-        players_ine = []
-        players = self.read_all()
-        for p in players:
-            players_ine.append(p["ine"])
-
-        return players_ine
+        return [p["ine"] for p in self.read()]
 
     @classmethod
-    def find_player(self, ine):
-        """Look for a player in players table by ine
-
-        Take as argument an ine(str): chess player national id
-
-        return found result"""
+    def find(self, ine: str) -> list:
+        """Look for a player in players table by ine"""
 
         return self.table().search(where("ine") == ine)
 
     @classmethod
-    def delete_table(self):
-        """Delete all data from players table"""
+    def reboot(self):
+        """create 6 fake players in database for demo"""
 
         self.table().truncate()
 
-    @classmethod
-    def boot(self):
-        """create fake players in database for demo"""
-
-        player1 = Player(
+        player1 = Players(
             last_name="ZIDANE",
             first_name="Zinedine",
             birthdate="23/06/1972",
@@ -116,7 +104,7 @@ class Player:
         )
         self.create(player1)
 
-        player2 = Player(
+        player2 = Players(
             last_name="MARADONA",
             first_name="Diego",
             birthdate="30/10/1960",
@@ -124,7 +112,7 @@ class Player:
         )
         self.create(player2)
 
-        player3 = Player(
+        player3 = Players(
             last_name="RONALDO",
             first_name="Christiano",
             birthdate="05/02/1985",
@@ -132,7 +120,7 @@ class Player:
         )
         self.create(player3)
 
-        player4 = Player(
+        player4 = Players(
             last_name="MESSI",
             first_name="Lionel",
             birthdate="24/06/1987",
@@ -140,7 +128,7 @@ class Player:
         )
         self.create(player4)
 
-        player5 = Player(
+        player5 = Players(
             last_name="INIESTA",
             first_name="Andres",
             birthdate="24/06/1987",
@@ -148,7 +136,7 @@ class Player:
         )
         self.create(player5)
 
-        player6 = Player(
+        player6 = Players(
             last_name="VAN-BASTEN",
             first_name="Marco",
             birthdate="24/06/1987",
@@ -157,39 +145,12 @@ class Player:
         self.create(player6)
 
     @classmethod
-    def reboot(self):
-        """Clear players table and create fake players in it for demo"""
-        self.delete_table()
-        self.boot()
+    def report(self):
+        """export system's players to an excel report and read it"""
 
-    @classmethod
-    def rapport(self):
-        """export system's players to an excel rapport and read it"""
+        data = [player for player in self.read()]
 
-        players_rapport = []
-
-        for player in self.read_all():
-            players_rapport.append(
-                [
-                    player["last_name"],
-                    player["first_name"],
-                    player["birthdate"],
-                    player["ine"],
-                ]
-            )
-        file_path = "./data/exports/system_players_rapport.xlsx"
-
-        data = [
-            {
-                "last_name": p[0],
-                "first_name": p[1],
-                "birthdate": p[2],
-                "ine": p[3],
-            }
-            for p in players_rapport
-        ]
-
-        data_to_export = pandas.DataFrame.from_records(data)
+        data_to_export = pd.DataFrame.from_records(data)
+        file_path = "./data/exports/system_players_report.xlsx"
+        remove_file(file_path)
         data_to_export.to_excel(file_path)
-
-        return players_rapport
