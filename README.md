@@ -1,5 +1,5 @@
 <center>
-CHESS GAME
+Chess tournament manager
 </center> 
 
 <p align="center">
