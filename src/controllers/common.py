@@ -2,7 +2,6 @@
 
 import re
 
-# from src.models.tournament import Tournaments
 
 
 def clean(text: str) -> str:
