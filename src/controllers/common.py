@@ -3,7 +3,6 @@
 import re
 
 
-
 def clean(text: str) -> str:
     return (
         text.lower()
