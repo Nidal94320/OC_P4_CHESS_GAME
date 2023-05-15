@@ -411,7 +411,7 @@ class Tournaments:
         and register an error message"""
 
         if not self.rounds_status():
-            logging.error("The previous round isn't finished !")
+            logging.info("The previous round isn't finished !")
 
         if self.status == "finished":
             logging.error("The tournament is finished !")
@@ -431,7 +431,7 @@ class Tournaments:
             return reponse
 
         if not reponse and (self.current_round < len(self.players_score) - 1):
-            logging.error("Please use the 'next_round' class method !")
+            logging.info("Please use the 'next_round' class method !")
 
         if not reponse and len(self.players_score) < 4:
             logging.error(
